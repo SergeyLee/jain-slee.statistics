@@ -1,0 +1,67 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>restcomm-slee-ra-statistics</artifactId>
+		<groupId>org.mobicents.resources</groupId>
+		<version>7.0.0-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>restcomm-slee-ra-statistics-ra</artifactId>
+	<name>Restcomm :: Resources :: ${project.artifactId}</name>
+
+	<properties>
+		<restcomm.commons.version>2.0.147</restcomm.commons.version>
+		<metrics.version>3.1.0</metrics.version>
+		<slf4j.version>1.5.5</slf4j.version>
+
+		<restcomm.name>Restcomm</restcomm.name>
+		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
+		<release.timestamp>${maven.build.timestamp}</release.timestamp>
+		<restcomm.statistics.server>https://statistics.restcomm.com/rest/</restcomm.statistics.server>
+	</properties>
+
+	<dependencies>
+		<dependency>
+            <artifactId>restcomm-slee-ra-statistics-ratype</artifactId>
+			<groupId>${project.groupId}</groupId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mobicents.servers.jainslee.core</groupId>
+			<artifactId>spi</artifactId>
+		</dependency>
+
+		<!-- Restcomm Statistics -->
+		<dependency>
+			<groupId>org.restcomm.commons</groupId>
+			<artifactId>restcomm-statistics</artifactId>
+			<version>${restcomm.commons.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.dropwizard.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+			<version>${metrics.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
+	</build>
+
+</project>

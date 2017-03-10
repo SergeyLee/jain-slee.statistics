@@ -11,11 +11,7 @@
 	<name>Restcomm :: Resources :: ${project.artifactId}</name>
 
 	<properties>
-		<restcomm.commons.version>2.0.147</restcomm.commons.version>
-		<metrics.version>3.1.0</metrics.version>
-		<slf4j.version>1.5.5</slf4j.version>
-
-		<restcomm.name>Restcomm</restcomm.name>
+		<release.name>Restcomm</release.name>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
 		<release.timestamp>${maven.build.timestamp}</release.timestamp>
 		<restcomm.statistics.server>https://statistics.restcomm.com/rest/</restcomm.statistics.server>
@@ -31,32 +27,14 @@
 			<groupId>org.mobicents.servers.jainslee.core</groupId>
 			<artifactId>spi</artifactId>
 		</dependency>
-
-		<!-- Restcomm Statistics -->
-		<dependency>
-			<groupId>org.restcomm.commons</groupId>
-			<artifactId>restcomm-statistics</artifactId>
-			<version>${restcomm.commons.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.dropwizard.metrics</groupId>
-			<artifactId>metrics-core</artifactId>
-			<version>${metrics.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-simple</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
 	</dependencies>
 
 	<build>
 		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
 			<resource>
 				<directory>src/main/resources</directory>
 				<filtering>true</filtering>

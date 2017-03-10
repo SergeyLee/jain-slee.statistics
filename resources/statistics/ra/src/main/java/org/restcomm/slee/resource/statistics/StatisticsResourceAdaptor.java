@@ -42,13 +42,14 @@ import javax.slee.resource.SleeEndpoint;
 import org.mobicents.slee.container.SleeContainer;
 import org.mobicents.slee.container.management.ResourceManagement;
 
-//import org.restcomm.commons.statistics.reporter.RestcommStatsReporter;
-//import com.codahale.metrics.Counter;
-//import com.codahale.metrics.MetricRegistry;
+import org.restcomm.commons.statistics.reporter.RestcommStatsReporter;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -57,19 +58,8 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 	private transient Tracer tracer;
 
 	private ResourceAdaptorContext raContext;
-	private SleeEndpoint sleeEndpoint;
-
 	private SleeContainer sleeContainer;
 	private ResourceManagement resourceManagement;
-
-	/**
-	 * the EventLookupFacility is used to look up the event id of incoming
-	 * events
-	 */
-	private EventLookupFacility eventLookup;
-
-
-    private volatile boolean shutdownServer = false;
 
 	public StatisticsResourceAdaptor() { }
 
@@ -77,12 +67,7 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 		return raContext;
 	}
 
-	public SleeEndpoint getSleeEndpoint() {
-		return sleeEndpoint;
-	}
-
 	// Restcomm Statistics
-	/*
 	protected static final String STATISTICS_SERVER = "statistics.server";
 	protected static final String DEFAULT_STATISTICS_SERVER = "https://statistics.restcomm.com/rest/";
 
@@ -92,78 +77,91 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 	private Counter counterCalls = metrics.counter("calls");
 	private Counter counterSeconds = metrics.counter("seconds");
 	private Counter counterMessages = metrics.counter("messages");
-	*/
 
 	// lifecycle methods
 
 	public void setResourceAdaptorContext(ResourceAdaptorContext raContext) {
-		raContext = raContext;
-		tracer = raContext.getTracer(StatisticsResourceAdaptor.class.getSimpleName());
+		this.raContext = raContext;
+		this.tracer = raContext.getTracer(StatisticsResourceAdaptor.class.getSimpleName());
 
-		sleeEndpoint = raContext.getSleeEndpoint();
-		eventLookup = raContext.getEventLookupFacility();
-
-		sleeContainer = SleeContainer.lookupFromJndi();
-		System.out.println("sleeContainer: " + sleeContainer);
-		if (sleeContainer != null) {
-			resourceManagement = sleeContainer.getResourceManagement();
-			System.out.println("resourceManagement: " + resourceManagement);
-
-			//for (String raEntity: resourceManagement.getResourceAdaptorEntities()) {
-			//	tracer.info("RA Entity: " + raEntity);
-			//	System.out.println("RA Entity: " + raEntity);
-			//}
+		this.sleeContainer = SleeContainer.lookupFromJndi();
+		if (this.sleeContainer != null) {
+			this.resourceManagement = sleeContainer.getResourceManagement();
 		}
-
-		raContext.getTimer().schedule(new StatisticsTimerTask(), 5000, 5000);
 	}
 
 	private class StatisticsTimerTask extends TimerTask {
+
 		@Override
 		public void run() {
-			System.out.println("StatisticsTimerTask run()");
 
-			if (resourceManagement != null) {
-				for (String raEntity: resourceManagement.getResourceAdaptorEntities()) {
-					tracer.info("RA Entity: " + raEntity);
-					System.out.println("RA Entity: " + raEntity);
+			if (resourceManagement == null) {
+				return;
+			}
 
-					try {
-						ObjectName usageMBeanName = resourceManagement.getResourceUsageMBean(raEntity);
-						System.out.println("RA UsageMBean: " + usageMBeanName);
+			for (String raEntity: resourceManagement.getResourceAdaptorEntities()) {
+				if (tracer.isFineEnabled()) {
+					tracer.fine("RA Entity: " + raEntity);
+				}
 
-						Object usageParameterSet = ManagementFactory.getPlatformMBeanServer()
-								.invoke(usageMBeanName, "getInstalledUsageParameterSet",
-										new Object[] {"statistics"}, new String[] {String.class.getName()});
+				try {
+					ObjectName usageMBeanName = resourceManagement.getResourceUsageMBean(raEntity);
 
-						if (usageParameterSet != null) {
+					String usageParameterSetName = "statistics"; // null for default set
+					Object usageParameterSet = ManagementFactory.getPlatformMBeanServer()
+							.invoke(usageMBeanName, "getInstalledUsageParameterSet",
+									new Object[] {usageParameterSetName},
+									new String[] {String.class.getName()});
 
-							System.out.println("usageParameterSet: " + usageParameterSet);
-							System.out.println("usageParameterSet: " + usageParameterSet.getClass().getCanonicalName());
+					if (usageParameterSet != null) {
+						try {
+							Method method = usageParameterSet.getClass()
+									.getMethod("getParameter", String.class, boolean.class);
 
-							try {
-								Method method = usageParameterSet.getClass()
-										.getMethod("getParameter", String.class, boolean.class);
-								Long calls = (Long) method
-										.invoke(usageParameterSet, "calls", false);
-								System.out.println("calls: " + calls);
-							} catch (Exception e) {
-								System.out.println("Cant get Usage parameter value");
-								e.printStackTrace();
+							// get and reset
+							Long calls = (Long) method.invoke(usageParameterSet, "calls", true);
+							if (tracer.isFineEnabled()) {
+								tracer.fine("calls: " + calls);
+							}
+							counterCalls.inc(calls);
+
+							Long messages = (Long) method.invoke(usageParameterSet, "messages", true);
+							if (tracer.isFineEnabled()) {
+								tracer.fine("messages: " + messages);
+							}
+							counterMessages.inc(messages);
+
+							Long seconds = (Long) method.invoke(usageParameterSet, "seconds", true);
+							if (tracer.isFineEnabled()) {
+								tracer.fine("seconds: " + seconds);
+							}
+							counterSeconds.inc(seconds);
+
+							// TODO: check counters?
+							//if (calls != 0 || messages != 0 || seconds != 0) {
+							statsReporter.report();
+							//}
+
+						} catch (Exception e) {
+							if (tracer.isWarningEnabled()) {
+								tracer.warning("Cant get Usage parameter value", e);
 							}
 						}
-
-					} catch (UnrecognizedResourceAdaptorEntityException e) {
-						System.out.println("RA UsageMBean is not exists");
-					} catch (InvalidArgumentException e) {
-						System.out.println("RA UsageMBean is not exists");
-					} catch (Exception e) {
-						// TODO
-						System.out.println("RA UsageMBean is not exists");
-						e.printStackTrace();
 					}
+
+					//ManagementFactory.getPlatformMBeanServer()
+					//		.invoke(usageMBeanName, "resetAllUsageParameters",
+					//				null, null);
+
+				} catch (UnrecognizedResourceAdaptorEntityException e) {
+					// TODO
+				} catch (InvalidArgumentException e) {
+					// TODO
+				} catch (Exception e) {
+					// TODO
 				}
-			}
+			} // end of for
+
 		}
 	}
 
@@ -171,40 +169,47 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 	}
 
 	public void raActive() {
-
-		// Restcomm Statistics
-		/*
-		if (statsReporter==null)
+		if (statsReporter == null) {
 			statsReporter = new RestcommStatsReporter();
-		String statisticsServer = null; // Version.getVersionProperty(STATISTICS_SERVER);
+		}
+
+		String statisticsServer = Version.getVersionProperty(STATISTICS_SERVER);
 		if (statisticsServer == null || !statisticsServer.contains("http")) {
 			statisticsServer = DEFAULT_STATISTICS_SERVER;
 		}
+
+		if (tracer.isInfoEnabled()) {
+			tracer.info("statisticsServer: " + statisticsServer);
+		}
+
 		//define remote server address (optionally)
 		statsReporter.setRemoteServer(statisticsServer);
 		String projectName = System.getProperty("RestcommProjectName", "jainslee");
 		String projectType = System.getProperty("RestcommProjectType", "community");
-		String projectVersion = System.getProperty("RestcommProjectVersion", "1234");
-		//		Version.getVersionProperty(Version.RELEASE_VERSION));
+		String projectVersion = System.getProperty("RestcommProjectVersion",
+				Version.getVersionProperty(Version.RELEASE_VERSION));
+
 		if (tracer.isFineEnabled()) {
 			tracer.fine("Restcomm Stats " + projectName + " " + projectType + " " + projectVersion);
 		}
+
 		statsReporter.setProjectName(projectName);
 		statsReporter.setProjectType(projectType);
 		statsReporter.setVersion(projectVersion);
-		//define periodicy - default to once a day
+
+		Version.printVersion();
+
+		// TODO: define periodicity - now to once a minute (for testing)
+		//define periodicity - default to once a day
 		//statsReporter.start(86400, TimeUnit.SECONDS);
-
-		//Version.printVersion();
-		*/
-
+		raContext.getTimer().schedule(new StatisticsTimerTask(), 0, 30 * 1000);
 	}
 
 	public void raStopping() { }
 
 	public void raInactive() {
-		//statsReporter.stop();
-		//statsReporter = null;
+		statsReporter.stop();
+		statsReporter = null;
 	}
 
 	public void raUnconfigure() { }
@@ -212,8 +217,6 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 	public void unsetResourceAdaptorContext() {
 		raContext = null;
 		tracer = null;
-		sleeEndpoint = null;
-		eventLookup = null;
 
 		sleeContainer = null;
 		resourceManagement = null;

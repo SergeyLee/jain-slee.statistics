@@ -12,6 +12,12 @@
 
 	<dependencies>
 		<dependency>
+			<artifactId>restcomm-slee-ra-statistics-library</artifactId>
+			<groupId>${project.groupId}</groupId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
             <artifactId>jain-slee</artifactId>
 			<groupId>javax.slee</groupId>
 		</dependency>

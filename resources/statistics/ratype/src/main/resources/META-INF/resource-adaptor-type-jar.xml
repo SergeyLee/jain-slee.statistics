@@ -11,6 +11,12 @@
 		<resource-adaptor-type-vendor>org.restcomm</resource-adaptor-type-vendor>
 		<resource-adaptor-type-version>1.0</resource-adaptor-type-version>
 
+		<library-ref>
+			<library-name>statistics</library-name>
+			<library-vendor>org.restcomm</library-vendor>
+			<library-version>1.0</library-version>
+		</library-ref>
+
 		<resource-adaptor-type-classes>
 
             <!--
@@ -28,4 +34,5 @@
 		</resource-adaptor-type-classes>
 
 	</resource-adaptor-type>
+
 </resource-adaptor-type-jar>

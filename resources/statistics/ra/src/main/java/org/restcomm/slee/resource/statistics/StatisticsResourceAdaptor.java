@@ -46,6 +46,8 @@ import org.mobicents.slee.container.management.ResourceManagement;
 //import com.codahale.metrics.Counter;
 //import com.codahale.metrics.MetricRegistry;
 
+import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
 import java.util.TimerTask;
 
 /**
@@ -94,12 +96,12 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 
 	// lifecycle methods
 
-	public void setResourceAdaptorContext(ResourceAdaptorContext ctxt) {
-		raContext = ctxt;
-		tracer = ctxt.getTracer(StatisticsResourceAdaptor.class.getSimpleName());
+	public void setResourceAdaptorContext(ResourceAdaptorContext raContext) {
+		raContext = raContext;
+		tracer = raContext.getTracer(StatisticsResourceAdaptor.class.getSimpleName());
 
-		sleeEndpoint = ctxt.getSleeEndpoint();
-		eventLookup = ctxt.getEventLookupFacility();
+		sleeEndpoint = raContext.getSleeEndpoint();
+		eventLookup = raContext.getEventLookupFacility();
 
 		sleeContainer = SleeContainer.lookupFromJndi();
 		System.out.println("sleeContainer: " + sleeContainer);
@@ -113,13 +115,13 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 			//}
 		}
 
-		ctxt.getTimer().schedule(new StatisticsTimerTask(), 5000, 5000);
+		raContext.getTimer().schedule(new StatisticsTimerTask(), 5000, 5000);
 	}
 
 	private class StatisticsTimerTask extends TimerTask {
 		@Override
 		public void run() {
-			System.out.println("MyTimerTask run()");
+			System.out.println("StatisticsTimerTask run()");
 
 			if (resourceManagement != null) {
 				for (String raEntity: resourceManagement.getResourceAdaptorEntities()) {
@@ -130,6 +132,27 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 						ObjectName usageMBeanName = resourceManagement.getResourceUsageMBean(raEntity);
 						System.out.println("RA UsageMBean: " + usageMBeanName);
 
+						Object usageParameterSet = ManagementFactory.getPlatformMBeanServer()
+								.invoke(usageMBeanName, "getInstalledUsageParameterSet",
+										new Object[] {"statistics"}, new String[] {String.class.getName()});
+
+						if (usageParameterSet != null) {
+
+							System.out.println("usageParameterSet: " + usageParameterSet);
+							System.out.println("usageParameterSet: " + usageParameterSet.getClass().getCanonicalName());
+
+							try {
+								Method method = usageParameterSet.getClass()
+										.getMethod("getParameter", String.class, boolean.class);
+								Long calls = (Long) method
+										.invoke(usageParameterSet, "calls", false);
+								System.out.println("calls: " + calls);
+							} catch (Exception e) {
+								System.out.println("Cant get Usage parameter value");
+								e.printStackTrace();
+							}
+						}
+
 					} catch (UnrecognizedResourceAdaptorEntityException e) {
 						System.out.println("RA UsageMBean is not exists");
 					} catch (InvalidArgumentException e) {
@@ -137,6 +160,7 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 					} catch (Exception e) {
 						// TODO
 						System.out.println("RA UsageMBean is not exists");
+						e.printStackTrace();
 					}
 				}
 			}
@@ -204,9 +228,8 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 		throw new UnsupportedOperationException();
 	}
 
+
 	// event filtering methods
-
-
 	public void serviceActive(ReceivableService service) {
 	}
 
@@ -218,10 +241,8 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 
 
 	// mandatory callbacks
-
 	public void administrativeRemove(ActivityHandle handle) {
 	}
-
 
 	public Object getActivity(ActivityHandle activityHandle) {
 		return null;
@@ -233,35 +254,29 @@ public class StatisticsResourceAdaptor implements ResourceAdaptor {
 
 	// optional call-backs
 	public void activityEnded(ActivityHandle handle) {
-
 	}
 
 	public void activityUnreferenced(ActivityHandle activityHandle) {
-
 	}
 
 	public void eventProcessingFailed(ActivityHandle arg0,
 			FireableEventType arg1, Object arg2, Address arg3,
 			ReceivableService arg4, int arg5, FailureReason arg6) {
-
 	}
 
 	public void eventProcessingSuccessful(ActivityHandle arg0,
 			FireableEventType arg1, Object arg2, Address arg3,
 			ReceivableService arg4, int arg5) {
-
 	}
 
 	public void eventUnreferenced(ActivityHandle arg0, FireableEventType arg1,
 			Object event, Address arg3, ReceivableService arg4, int arg5) {
-
 	}
 
 	public void queryLiveness(ActivityHandle activityHandle) {
 	}
 
 	// interface accessors
-
 	public Object getResourceAdaptorInterface(String arg0) {
 		return null;
 	}
